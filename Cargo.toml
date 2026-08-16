@@ -1,0 +1,16 @@
+[package]
+name = "pg-migrate-cli"
+version = "0.1.0"
+edition = "2021"
+authors = ["txltedxgod <seidoutakidzava@gmail.com>"]
+description = "Fast transactional database schema migration CLI for PostgreSQL and SQLite in Rust"
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+tokio = { version = "1.36", features = ["full"] }
+sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "sqlite", "migrate"] }
+sha2 = "0.10"
+colored = "2.1"
+anyhow = "1.0"
