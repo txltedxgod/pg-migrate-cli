@@ -8,11 +8,19 @@ on:
 
 jobs:
   check:
+    name: Format, Clippy & Test Suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Cargo Check & Test
-        run: |
-          cargo check || true
-          cargo test || true
+      - uses: actions/checkout@v7
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+      - name: Clippy Linter
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Run Tests
+        run: cargo test --all --verbose

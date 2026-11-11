@@ -15,22 +15,19 @@ use std::fs;
 async fn main() -> Result<()> {
     let args = Cli::parse();
 
-    match args.command {
-        Commands::Create { name } => {
-            fs::create_dir_all(&args.dir)?;
-            let timestamp = chrono::Utc::now().format("%Y%m%d%H%M%S").to_string();
-            let up_file = args.dir.join(format!("{}_{}.up.sql", timestamp, name));
-            let down_file = args.dir.join(format!("{}_{}.down.sql", timestamp, name));
+    if let Commands::Create { name } = args.command {
+        fs::create_dir_all(&args.dir)?;
+        let timestamp = chrono::Utc::now().format("%Y%m%d%H%M%S").to_string();
+        let up_file = args.dir.join(format!("{}_{}.up.sql", timestamp, name));
+        let down_file = args.dir.join(format!("{}_{}.down.sql", timestamp, name));
 
-            fs::write(&up_file, "-- Write your UP migration SQL here\n")?;
-            fs::write(&down_file, "-- Write your DOWN rollback SQL here\n")?;
+        fs::write(&up_file, "-- Write your UP migration SQL here\n")?;
+        fs::write(&down_file, "-- Write your DOWN rollback SQL here\n")?;
 
-            println!("{} Created migration pair:", "✔".green());
-            println!("  {}", up_file.display());
-            println!("  {}", down_file.display());
-            return Ok(());
-        }
-        _ => {}
+        println!("{} Created migration pair:", "✔".green());
+        println!("  {}", up_file.display());
+        println!("  {}", down_file.display());
+        return Ok(());
     }
 
     let pool = PgPoolOptions::new()
@@ -56,7 +53,10 @@ async fn main() -> Result<()> {
 
     match args.command {
         Commands::Up => {
-            println!("{}", "🚀 Running pending forward migrations...".cyan().bold());
+            println!(
+                "{}",
+                "🚀 Running pending forward migrations...".cyan().bold()
+            );
             let mut applied_count = 0;
 
             for m in migrations {
@@ -83,12 +83,14 @@ async fn main() -> Result<()> {
                 print!("  Applying [{}] {} ... ", m.version, m.name);
                 let mut tx = pool.begin().await?;
                 tx.execute(m.up_sql.as_str()).await?;
-                sqlx::query("INSERT INTO _schema_migrations (version, name, checksum) VALUES ($1, $2, $3)")
-                    .bind(m.version)
-                    .bind(&m.name)
-                    .bind(&m.checksum)
-                    .execute(&mut *tx)
-                    .await?;
+                sqlx::query(
+                    "INSERT INTO _schema_migrations (version, name, checksum) VALUES ($1, $2, $3)",
+                )
+                .bind(m.version)
+                .bind(&m.name)
+                .bind(&m.checksum)
+                .execute(&mut *tx)
+                .await?;
                 tx.commit().await?;
 
                 println!("{}", "OK".green());
@@ -98,13 +100,19 @@ async fn main() -> Result<()> {
             if applied_count == 0 {
                 println!("{}", "Database schema is already up to date.".dimmed());
             } else {
-                println!("{} Successfully applied {} migrations.", "✔".green().bold(), applied_count);
+                println!(
+                    "{} Successfully applied {} migrations.",
+                    "✔".green().bold(),
+                    applied_count
+                );
             }
         }
         Commands::Down => {
-            let row = sqlx::query("SELECT version, name FROM _schema_migrations ORDER BY version DESC LIMIT 1")
-                .fetch_optional(&pool)
-                .await?;
+            let row = sqlx::query(
+                "SELECT version, name FROM _schema_migrations ORDER BY version DESC LIMIT 1",
+            )
+            .fetch_optional(&pool)
+            .await?;
 
             if let Some(r) = row {
                 let version: i64 = r.get(0);
@@ -133,10 +141,11 @@ async fn main() -> Result<()> {
         Commands::Status => {
             println!("\n{}", "── Migration Status ──".bold());
             for m in migrations {
-                let row = sqlx::query("SELECT applied_at FROM _schema_migrations WHERE version = $1")
-                    .bind(m.version)
-                    .fetch_optional(&pool)
-                    .await?;
+                let row =
+                    sqlx::query("SELECT applied_at FROM _schema_migrations WHERE version = $1")
+                        .bind(m.version)
+                        .fetch_optional(&pool)
+                        .await?;
 
                 let status = match row {
                     Some(_) => "APPLIED".green(),
@@ -146,7 +155,7 @@ async fn main() -> Result<()> {
             }
             println!();
         }
-        _ => {}
+        Commands::Create { .. } => unreachable!(),
     }
 
     Ok(())
